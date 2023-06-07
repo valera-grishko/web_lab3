@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Message, Comment
+from .tasks import send_messages_about_new_post_task
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -28,4 +29,7 @@ class MessageSerializer(serializers.ModelSerializer):
             validated_data['user'] = self.context['request'].user
         if self.context.get('scope', None):
             validated_data['user'] = self.context['scope']['user']
-        return super().create(validated_data)
+        instance = super().create(validated_data)
+        send_messages_about_new_post_task.delay(instance.user.email, instance.pk)
+        return instance
+
